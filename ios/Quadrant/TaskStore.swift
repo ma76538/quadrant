@@ -1,13 +1,23 @@
 import Foundation
 import QuadrantKit
+import CloudKit
 
 @MainActor
 class TaskStore: ObservableObject {
     @Published private(set) var tasks: [Task] = []
-    private let taskManager: TaskManager
+    private let taskManager: TaskManagerProtocol
     
-    init(taskManager: TaskManager = TaskManager()) {
-        self.taskManager = taskManager
+    init(containerIdentifier: String = "iCloud.com.yourdomain.quadrant") {
+        self.taskManager = CloudKitTaskManager(containerIdentifier: containerIdentifier)
+        
+        // Subscribe to CloudKit changes
+        Task {
+            do {
+                try await (taskManager as? CloudKitTaskManager)?.subscribeToChanges()
+            } catch {
+                print("Error setting up CloudKit subscription: \(error)")
+            }
+        }
     }
     
     func loadTasks() async {
